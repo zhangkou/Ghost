@@ -2,7 +2,7 @@
 
 /*global CasperTest, casper, email, user, password */
 
-CasperTest.begin('Ghost setup fails properly', 12, function suite(test) {
+CasperTest.begin('Ghost setup fails properly', 11, function suite(test) {
     casper.thenOpenAndWaitForPageLoad('setup', function then() {
         test.assertUrlMatch(/ghost\/setup\/one\/$/, 'Landed on the correct URL');
     });
@@ -11,13 +11,10 @@ CasperTest.begin('Ghost setup fails properly', 12, function suite(test) {
         casper.fillAndAdd('#setup', {'blog-title': 'ghost', name: 'slimer', email: email, password: 'short'});
     });
 
-    // should now throw a short password error
-    casper.waitForSelector('.notification-error', function onSuccess() {
-        test.assert(true, 'Got error notification');
-        test.assertSelectorHasText('.notification-error', 'Password must be at least 8 characters long');
-    }, function onTimeout() {
-        test.assert(false, 'No error notification :(');
-    });
+    // should now show a short password error
+    casper.waitForText('Password must be at least 8 characters long', function onSuccess() {
+        test.assert(true, 'Short password error was shown');
+    }, casper.failOnTimeout(test, 'Short password error was not shown'));
 
     casper.then(function setupWithLongPassword() {
         casper.fillAndAdd('#setup', {'blog-title': 'ghost', name: 'slimer', email: email, password: password});
@@ -30,15 +27,23 @@ CasperTest.begin('Ghost setup fails properly', 12, function suite(test) {
         casper.thenClick('.gh-flow-content .btn');
     });
 
-    casper.waitForSelector('.notification-error', function onSuccess() {
-        test.assert(true, 'Got error notification');
-        test.assertSelectorHasText('.notification-error', 'No users to invite.');
+    casper.waitForText('No users to invite', function onSuccess() {
+        test.assert(true, 'Got error message');
 
         test.assertExists('.gh-flow-content .btn-minor', 'Submit button is not minor');
-        test.assertSelectorHasText('.gh-flow-content .btn', 'Invite some users', 'Submit button has wrong text');
+        test.assertSelectorHasText('.gh-flow-content .btn', 'No users to invite', 'Submit button has wrong text');
     }, function onTimeout() {
-        test.assert(false, 'No error notification for empty invitation list');
+        test.assert(false, 'No error message for empty invitation list');
     });
+
+    casper.then(function fillInvalidEmail() {
+        casper.fill('form.gh-flow-invite', {users: 'test'});
+        casper.thenClick('.gh-flow-content .btn');
+    });
+
+    casper.waitForText('1 invalid email address', function onSuccess() {
+        test.assert(true, 'Got invalid email error');
+    }, casper.failOnTimeout(test, 'Invalid email error not shown'));
 
     casper.then(function fillInvitationForm() {
         casper.fill('form.gh-flow-invite', {users: 'test@example.com'});
@@ -56,13 +61,13 @@ CasperTest.begin('Ghost setup fails properly', 12, function suite(test) {
     casper.wait(5000);
 
     // These invitations will fail, because Casper can't send emails
-    casper.waitForSelector('.notification-error', function onSuccess() {
+    casper.waitForSelector('.gh-alert', function onSuccess() {
         test.assert(true, 'Got error notification');
-        test.assertSelectorHasText('.notification-error', 'Failed to send 2 invitations: test@example.com, test2@example.com');
+        test.assertSelectorHasText('.gh-alert', 'Failed to send 2 invitations: test@example.com, test2@example.com');
     }, function onTimeout() {
         test.assert(false, 'No error notification after invite.');
     });
-}, true);
+}, true, true);
 
 CasperTest.begin('Authenticated user is redirected', 6, function suite(test) {
     casper.thenOpenAndWaitForPageLoad('signin', function testTitleAndUrl() {
@@ -89,4 +94,4 @@ CasperTest.begin('Authenticated user is redirected', 6, function suite(test) {
     }, function onTimeOut() {
         test.fail('Failed to redirect');
     });
-}, true);
+}, true, true);

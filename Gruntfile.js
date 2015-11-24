@@ -67,10 +67,8 @@ var _              = require('lodash'),
                     files: [
                         'content/themes/casper/assets/css/*.css',
                         'content/themes/casper/assets/js/*.js',
-                        'core/client/dist/*.js',
-                        'core/client/dist/*.css',
-                        'core/built/scripts/*.js',
-                        'core/client/app/html/*.html'
+                        'core/built/assets/*.js',
+                        'core/client/dist/index.html'
                     ],
                     options: {
                         livereload: true
@@ -132,7 +130,6 @@ var _              = require('lodash'),
                     '!config*.js', // note: i added this, do we want this linted?
                     'core/*.js',
                     'core/server/**/*.js',
-                    'core/shared/**/*.js',
                     'core/test/**/*.js',
                     '!core/test/coverage/**',
                     '!core/shared/vendor/**/*.js'
@@ -169,7 +166,6 @@ var _              = require('lodash'),
                             '!config*.js', // note: i added this, do we want this linted?
                             'core/*.js',
                             'core/server/**/*.js',
-                            'core/shared/**/*.js',
                             'core/test/**/*.js',
                             '!core/test/coverage/**',
                             '!core/shared/vendor/**/*.js'
@@ -231,8 +227,8 @@ var _              = require('lodash'),
                 // #### All Integration tests
                 integration: {
                     src: [
-                        'core/test/integration/**/model*_spec.js',
-                        'core/test/integration/**/api*_spec.js',
+                        'core/test/integration/**/*_spec.js',
+                        'core/test/integration/**/*_spec.js',
                         'core/test/integration/*_spec.js'
                     ]
                 },
@@ -272,10 +268,20 @@ var _              = require('lodash'),
                     src: ['core/test/unit'],
                     options: {
                         mask: '**/*_spec.js',
-                        coverageFolder: 'core/test/coverage',
+                        coverageFolder: 'core/test/coverage/unit',
                         mochaOptions: ['--timeout=15000'],
                         excludes: ['core/client/**']
                     }
+                },
+                coverage_integration: {
+                    src: ['core/test/integration/api'],
+                    options: {
+                        coverageFolder: 'core/test/coverage/integration',
+                        mask: '**/*_spec.js',
+                        mochaOptions: ['--timeout=15000'],
+                        excludes: ['core/client/**', 'core/server/built', 'core/server/apps', 'core/server/config', 'core/server/data']
+                    }
+
                 }
             },
 
@@ -317,7 +323,7 @@ var _              = require('lodash'),
                     },
                     options: {
                         execOptions: {
-                            cwd: path.resolve(cwd + '/core/client/'),
+                            cwd: path.resolve(process.cwd() + '/core/client/'),
                             stdout: false
                         }
                     }
@@ -341,6 +347,10 @@ var _              = require('lodash'),
 
                 shrinkwrap: {
                     command: 'npm shrinkwrap'
+                },
+
+                dedupe: {
+                    command: 'npm dedupe'
                 },
 
                 csscombfix: {
@@ -395,24 +405,10 @@ var _              = require('lodash'),
             // ### grunt-contrib-copy
             // Copy files into their correct locations as part of building assets, or creating release zips
             copy: {
-                jquery: {
-                    cwd: 'core/client/bower_components/jquery/dist/',
-                    src: 'jquery.js',
-                    dest: 'core/built/public/',
-                    expand: true,
-                    nonull: true
-                },
                 release: {
-                    files: [{
-                        cwd: 'core/client/bower_components/jquery/dist/',
-                        src: 'jquery.js',
-                        dest: 'core/built/public/',
-                        expand: true
-                    }, {
-                        expand: true,
-                        src: buildGlob,
-                        dest: '<%= paths.releaseBuild %>/'
-                    }]
+                    expand: true,
+                    src: buildGlob,
+                    dest: '<%= paths.releaseBuild %>/'
                 }
             },
 
@@ -426,27 +422,6 @@ var _              = require('lodash'),
                     expand: true,
                     cwd: '<%= paths.releaseBuild %>/',
                     src: ['**']
-                }
-            },
-
-            // ### grunt-contrib-uglify
-            // Minify concatenated javascript files ready for production
-            uglify: {
-                prod: {
-                    options: {
-                        sourceMap: false
-                    },
-                    files: {
-                        'core/built/public/jquery.min.js': 'core/built/public/jquery.js'
-                    }
-                },
-                release: {
-                    options: {
-                        sourceMap: false
-                    },
-                    files: {
-                        'core/built/public/jquery.min.js': 'core/built/public/jquery.js'
-                    }
                 }
             },
 
@@ -506,7 +481,7 @@ var _              = require('lodash'),
             }, function (error, result, code) {
                 /*jshint unused:false*/
                 if (error) {
-                    grunt.fail.fatal(result.stdout);
+                    grunt.fail.fatal(result.stderr);
                 }
                 grunt.log.writeln(result.stdout);
                 done();
@@ -609,7 +584,7 @@ var _              = require('lodash'),
 
         grunt.registerTask('test', function (test) {
             if (!test) {
-                grunt.log.write('no test provided');
+                grunt.fail.fatal('No test provided. `grunt test` expects a filename. e.g.: `grunt test:unit/apps_spec.js`. Did you mean `npm test` or `grunt validate`?');
             }
 
             grunt.task.run('test-setup', 'shell:test:' + test);
@@ -636,7 +611,7 @@ var _              = require('lodash'),
         // details of each of the test suites.
         //
         grunt.registerTask('test-all', 'Run tests and lint code',
-            ['test-routes', 'test-module', 'test-unit', 'test-integration', 'test-ember', 'test-functional']);
+            ['test-routes', 'test-module', 'test-unit', 'test-integration', 'test-ember']);
 
         // ### Lint
         //
@@ -784,6 +759,10 @@ var _              = require('lodash'),
             ['test-setup', 'mocha_istanbul:coverage']
         );
 
+        grunt.registerTask('coverage-integration', 'Generate unit and integration tests coverage report',
+            ['test-setup', 'mocha_istanbul:coverage_integration']
+        );
+
         // #### Master Warning *(Utility Task)*
         // Warns git users not ot use the `master` branch in production.
         // `master` is an unstable branch and shouldn't be used in production as you run the risk of ending up with a
@@ -801,8 +780,6 @@ var _              = require('lodash'),
         // Builds the github contributors partial template used on the Settings/About page,
         // and downloads the avatar for each of the users.
         // Run by any task that compiles the ember assets or manually via `grunt buildAboutPage`.
-        // Change which version you're working against by setting the "releaseTag" below.
-        //
         // Only builds if the contributors template does not exist.
         // To force a build regardless, supply the --force option.
         //     `grunt buildAboutPage --force`
@@ -810,7 +787,7 @@ var _              = require('lodash'),
             var done = this.async(),
                 templatePath = 'core/client/app/templates/-contributors.hbs',
                 imagePath = 'core/client/public/assets/img/contributors/',
-                timeSpan = Date.now() - (1000 * 60 * 60 * 24 * 180),
+                timeSpan = moment().subtract(90, 'days').format('YYYY-MM-DD'),
                 oauthKey = process.env.GITHUB_OAUTH_KEY;
 
             if (fs.existsSync(templatePath) && !grunt.option('force')) {
@@ -827,7 +804,7 @@ var _              = require('lodash'),
                     user: 'tryghost',
                     repo: 'ghost',
                     oauthKey: oauthKey,
-                    releaseDate: timeSpan,
+                    sinceDate: timeSpan,
                     count: 18,
                     retry: true
                 })
@@ -910,7 +887,7 @@ var _              = require('lodash'),
         // ### Basic Asset Building
         // Builds and moves necessary client assets. Prod additionally builds the ember app.
         grunt.registerTask('assets', 'Basic asset building & moving',
-            ['clean:tmp', 'buildAboutPage', 'copy:jquery']);
+            ['clean:tmp', 'buildAboutPage']);
 
         // ### Default asset build
         // `grunt` - default grunt task
@@ -924,7 +901,7 @@ var _              = require('lodash'),
         //
         // It is otherwise the same as running `grunt`, but is only used when running Ghost in the `production` env.
         grunt.registerTask('prod', 'Build JS & templates for production',
-            ['shell:ember:prod', 'uglify:prod', 'master-warn']);
+            ['shell:ember:prod', 'master-warn']);
 
         // ### Live reload
         // `grunt dev` - build assets on the fly whilst developing
@@ -951,7 +928,7 @@ var _              = require('lodash'),
             ' - Copy files to release-folder/#/#{version} directory\n' +
             ' - Clean out unnecessary files (travis, .git*, etc)\n' +
             ' - Zip files in release-folder to dist-folder/#{version} directory',
-            ['init', 'shell:ember:prod', 'uglify:release', 'clean:release',  'shell:shrinkwrap', 'copy:release', 'compress:release']);
+            ['init', 'shell:ember:prod', 'clean:release',  'shell:dedupe', 'shell:shrinkwrap', 'copy:release', 'compress:release']);
     };
 
 module.exports = configureGrunt;

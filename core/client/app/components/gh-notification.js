@@ -2,32 +2,26 @@ import Ember from 'ember';
 
 export default Ember.Component.extend({
     tagName: 'article',
-    classNames: ['gh-notification', 'gh-notification-green'],
+    classNames: ['gh-notification', 'gh-notification-passive'],
     classNameBindings: ['typeClass'],
 
     message: null,
 
     notifications: Ember.inject.service(),
 
-    typeClass: Ember.computed(function () {
+    typeClass: Ember.computed('message.type', function () {
         var classes = '',
-            message = this.get('message'),
-            type,
-            dismissible;
+            type = this.get('message.type'),
+            typeMapping;
 
-        // Check to see if we're working with a DS.Model or a plain JS object
-        if (typeof message.toJSON === 'function') {
-            type = message.get('type');
-            dismissible = message.get('dismissible');
-        } else {
-            type = message.type;
-            dismissible = message.dismissible;
-        }
+        typeMapping = {
+            success: 'green',
+            error: 'red',
+            warn: 'yellow'
+        };
 
-        classes += 'notification-' + type;
-
-        if (type === 'success' && dismissible !== false) {
-            classes += ' notification-passive';
+        if (typeMapping[type] !== undefined) {
+            classes += 'gh-notification-' + typeMapping[type];
         }
 
         return classes;
@@ -38,9 +32,13 @@ export default Ember.Component.extend({
 
         self.$().on('animationend webkitAnimationEnd oanimationend MSAnimationEnd', function (event) {
             if (event.originalEvent.animationName === 'fade-out') {
-                self.get('notifications').removeObject(self.get('message'));
+                self.get('notifications').closeNotification(self.get('message'));
             }
         });
+    },
+
+    willDestroyElement: function () {
+        this.$().off('animationend webkitAnimationEnd oanimationend MSAnimationEnd');
     },
 
     actions: {

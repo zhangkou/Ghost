@@ -3,38 +3,68 @@ import ValidationEngine from 'ghost/mixins/validation-engine';
 import {request as ajax} from 'ic-ajax';
 
 export default Ember.Controller.extend(ValidationEngine, {
-    validationType: 'signin',
-
     submitting: false,
+    loggingIn: false,
+    authProperties: ['identification', 'password'],
 
     ghostPaths: Ember.inject.service('ghost-paths'),
     notifications: Ember.inject.service(),
+    session: Ember.inject.service(),
+    application: Ember.inject.controller(),
+    flowErrors: '',
+
+    // ValidationEngine settings
+    validationType: 'signin',
 
     actions: {
         authenticate: function () {
-            var model = this.get('model'),
-                authStrategy = 'simple-auth-authenticator:oauth2-password-grant',
-                data = model.getProperties('identification', 'password');
+            var self = this,
+                model = this.get('model'),
+                authStrategy = 'authenticator:oauth2';
 
-            this.get('session').authenticate(authStrategy, data).catch(function () {
-                // if authentication fails a rejected promise will be returned.
-                // it needs to be caught so it doesn't generate an exception in the console,
-                // but it's actually "handled" by the sessionAuthenticationFailed action handler.
+            // Authentication transitions to posts.index, we can leave spinner running unless there is an error
+            this.get('session').authenticate(authStrategy, model.get('identification'), model.get('password')).catch(function (error) {
+                self.toggleProperty('loggingIn');
+
+                if (error.errors) {
+                    error.errors.forEach(function (err) {
+                        err.message = err.message.htmlSafe();
+                    });
+
+                    self.set('flowErrors', error.errors[0].message.string);
+
+                    if (error.errors[0].message.string.match(/user with that email/)) {
+                        self.get('model.errors').add('identification', '');
+                    }
+
+                    if (error.errors[0].message.string.match(/password is incorrect/)) {
+                        self.get('model.errors').add('password', '');
+                    }
+                } else {
+                    // Connection errors don't return proper status message, only req.body
+                    self.get('notifications').showAlert('There was a problem on the server.', {type: 'error', key: 'session.authenticate.failed'});
+                }
             });
         },
 
         validateAndAuthenticate: function () {
             var self = this;
-
+            this.set('flowErrors', '');
             // Manually trigger events for input fields, ensuring legacy compatibility with
             // browsers and password managers that don't send proper events on autofill
             $('#login').find('input').trigger('change');
 
-            this.validate({format: false}).then(function () {
-                self.get('notifications').closePassive();
+            // This is a bit dirty, but there's no other way to ensure the properties are set as well as 'signin'
+            this.get('hasValidated').addObjects(this.authProperties);
+            this.validate({property: 'signin'}).then(function () {
+                self.toggleProperty('loggingIn');
                 self.send('authenticate');
-            }).catch(function (errors) {
-                self.get('notifications').showErrors(errors);
+            }).catch(function (error) {
+                if (error) {
+                    self.get('notifications').showAPIError(error, {key: 'signin.authenticate'});
+                } else {
+                    self.set('flowErrors', 'Please fill out the form to sign in.');
+                }
             });
         },
 
@@ -43,26 +73,39 @@ export default Ember.Controller.extend(ValidationEngine, {
                 notifications = this.get('notifications'),
                 self = this;
 
-            if (!email) {
-                return notifications.showError('Enter email address to reset password.');
-            }
+            this.set('flowErrors', '');
+            // This is a bit dirty, but there's no other way to ensure the properties are set as well as 'forgotPassword'
+            this.get('hasValidated').addObject('identification');
+            this.validate({property: 'forgotPassword'}).then(function () {
+                self.toggleProperty('submitting');
 
-            self.set('submitting', true);
+                ajax({
+                    url: self.get('ghostPaths.url').api('authentication', 'passwordreset'),
+                    type: 'POST',
+                    data: {
+                        passwordreset: [{
+                            email: email
+                        }]
+                    }
+                }).then(function () {
+                    self.toggleProperty('submitting');
+                    notifications.showAlert('Please check your email for instructions.', {type: 'info', key: 'forgot-password.send.success'});
+                }).catch(function (resp) {
+                    self.toggleProperty('submitting');
+                    if (resp && resp.jqXHR && resp.jqXHR.responseJSON && resp.jqXHR.responseJSON.errors) {
+                        var message = resp.jqXHR.responseJSON.errors[0].message;
 
-            ajax({
-                url: self.get('ghostPaths.url').api('authentication', 'passwordreset'),
-                type: 'POST',
-                data: {
-                    passwordreset: [{
-                        email: email
-                    }]
-                }
-            }).then(function () {
-                self.set('submitting', false);
-                notifications.showSuccess('Please check your email for instructions.');
-            }).catch(function (resp) {
-                self.set('submitting', false);
-                notifications.showAPIError(resp, {defaultErrorText: 'There was a problem with the reset, please try again.'});
+                        self.set('flowErrors', message);
+
+                        if (message.match(/no user with that email/)) {
+                            self.get('model.errors').add('identification', '');
+                        }
+                    } else {
+                        notifications.showAPIError(resp, {defaultErrorText: 'There was a problem with the reset, please try again.', key: 'forgot-password.send'});
+                    }
+                });
+            }).catch(function () {
+                self.set('flowErrors', 'We need your email address to reset your password!');
             });
         }
     }

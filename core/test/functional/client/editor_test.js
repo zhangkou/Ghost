@@ -26,7 +26,7 @@ CasperTest.begin('Ghost editor functions correctly', 16, function suite(test) {
 
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function onSuccess() {
+    casper.waitForSelector('.gh-notification', function onSuccess() {
         test.assert(true, 'Can save with no title.');
         test.assertEvalEquals(function () {
             return document.getElementById('entry-title').value;
@@ -58,7 +58,7 @@ CasperTest.begin('Ghost editor functions correctly', 16, function suite(test) {
 
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function onSuccess() {
+    casper.waitForSelector('.gh-notification', function onSuccess() {
         test.assertUrlMatch(/ghost\/editor\/\d+\/$/, 'got an id on our URL');
         test.assertEvalEquals(function () {
             return document.querySelector('#entry-title').value;
@@ -138,7 +138,7 @@ CasperTest.begin('Image Uploads', 23, function suite(test) {
             return document.querySelector('.entry-markdown-content textarea').value;
         }, '![some text]()\n', 'Editor value is correct');
 
-        test.assertHTMLEquals('<section class=\"js-drop-zone image-uploader\"><span class=\"media\"><span class=\"hidden\">Image Upload</span></span><img class=\"js-upload-target\" style=\"display: none; \" src=\"\"><div class=\"description\">Add image of <strong>some text</strong></div><input class=\"js-fileupload main fileupload\" type=\"file\" name=\"uploadimage\"><div class=\"js-fail failed\" style=\"display: none\">Something went wrong :(</div><button class=\"js-fail btn btn-green\" style=\"display: none\">Try Again</button><a class=\"image-url\" title=\"Add image from URL\"><i class=\"icon-link\"><span class=\"hidden\">URL</span></i></a></section>\n', 'HTML is correct');
+        test.assertHTMLEquals('<section class=\"js-drop-zone image-uploader\" data-uploaderui=\"true\"><span class=\"media\"><span class=\"hidden\">Image Upload</span></span><img class=\"js-upload-target\" style=\"display: none; \" src=\"\"><div class=\"description\">Add image of <strong>some text</strong></div><input class=\"js-fileupload main fileupload\" type=\"file\" name=\"uploadimage\"><div class=\"js-fail failed\" style=\"display: none\">Something went wrong :(</div><button class=\"js-fail btn btn-green\" style=\"display: none\">Try Again</button><a class=\"image-url\" title=\"Add image from URL\"><i class=\"icon-link\"><span class=\"hidden\">URL</span></i></a></section>\n', 'HTML is correct');
 
         test.assertSelectorHasText(
             '.entry-preview .rendered-markdown', 'Add image of some text', 'Alt value is correct'
@@ -182,7 +182,7 @@ CasperTest.begin('Image Uploads', 23, function suite(test) {
         casper.writeContentToEditor(markdownImageString);
     });
 
-    casper.waitForSelector('.entry-preview .js-drop-zone.pre-image-uploader', function onSuccess() {
+    casper.waitForSelector('img.js-upload-target', function () {
         var imageJQuerySelector = '.entry-preview img.js-upload-target[src="' + testFileLocation + '"]';
         test.assertExists(imageJQuerySelector, 'Uploaded image tag properly links to source location');
     });
@@ -215,7 +215,7 @@ CasperTest.begin('Image Uploads', 23, function suite(test) {
         });
     });
 
-    casper.waitForSelector('.entry-preview .js-drop-zone.pre-image-uploader', function onSuccess() {
+    casper.waitForSelector('img.js-upload-target', function onSuccess() {
         var imageJQuerySelector = '.entry-preview img.js-upload-target[src="' + imageURL + '"]';
         test.assertExists(imageJQuerySelector, 'Uploaded image tag properly links to inputted image URL');
     });
@@ -223,7 +223,7 @@ CasperTest.begin('Image Uploads', 23, function suite(test) {
     // Save the post with the image
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function onSuccess() {
+    casper.waitForSelector('.gh-notification', function onSuccess() {
         test.assertUrlMatch(/ghost\/editor\/\d+\/$/, 'got an id on our URL');
     }, casper.failOnTimeout(test, 'Post was not successfully created'));
 
@@ -273,13 +273,13 @@ CasperTest.begin('Publish menu - new post', 10, function suite(test) {
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:first-child a');
 
         // ... check status, label, class
-        casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+        casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
             test.assertExists('.js-publish-button.btn-red', 'Publish button should have .btn-red');
             test.assertSelectorHasText('.js-publish-button', 'Publish Now', '.js-publish-button says Publish Now');
         }, function onTimeout() {
@@ -291,7 +291,7 @@ CasperTest.begin('Publish menu - new post', 10, function suite(test) {
     casper.thenClick('.js-publish-button');
 
     // ... check status, label, class
-    casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+    casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
         test.assertExists('.js-publish-button.btn-blue', 'Update button should have .btn-blue');
         test.assertSelectorHasText('.js-publish-button', 'Update Post', '.js-publish-button says Update Post');
     }, function onTimeout() {
@@ -329,13 +329,13 @@ CasperTest.begin('Publish menu - new page', 10, function suite(test) {
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:first-child a');
 
         // ... check status, label, class
-        casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+        casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
             test.assertExists('.js-publish-button.btn-red', 'Publish button should have .btn-red');
             test.assertSelectorHasText('.js-publish-button', 'Publish Now', '.js-publish-button says Publish Now');
         }, function onTimeout() {
@@ -347,7 +347,7 @@ CasperTest.begin('Publish menu - new page', 10, function suite(test) {
     casper.thenClick('.js-publish-button');
 
     // ... check status, label, class
-    casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+    casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
         test.assertExists('.js-publish-button.btn-blue', 'Update button should have .btn-blue');
         test.assertSelectorHasText('.js-publish-button', 'Update Page', '.js-publish-button says Update Page');
     }, function onTimeout() {
@@ -385,12 +385,12 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
     // Create a post in draft status
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function checkPostWasCreated() {
+    casper.waitForSelector('.gh-notification', function checkPostWasCreated() {
         test.assertUrlMatch(/ghost\/editor\/\d+\/$/, 'got an id on our URL');
     });
 
     // ... check option status, label, class now that we're *saved* as 'draft'
-    casper.then(function () {
+    casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function () {
         test.assertExists('.js-publish-splitbutton', '.js-publish-splitbutton exists');
         test.assertExists('.js-publish-button', '.js-publish-button exists');
         test.assertExists('.js-publish-button.btn-blue', '.js-publish-button.btn-blue exists');
@@ -399,7 +399,7 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
 
     casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-    casper.waitForOpaque('.js-publish-splitbutton .open', function onSuccess() {
+    casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu', function onSuccess() {
         test.assert(true, 'delete post button should be visible for saved drafts');
         test.assertVisible(
             '.js-publish-splitbutton .delete', 'delete post button should be visible on saved drafts'
@@ -412,7 +412,7 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:first-child a');
@@ -429,12 +429,12 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
     // Do publish
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function checkPostWasCreated() {
+    casper.waitForSelector('.gh-notification', function checkPostWasCreated() {
         test.assertUrlMatch(/ghost\/editor\/\d+\/$/, 'got an id on our URL');
     });
 
     // ... check option status, label, class for saved as 'published'
-    casper.then(function () {
+    casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function () {
         test.assertExists('.js-publish-splitbutton', '.js-publish-splitbutton exists');
         test.assertExists('.js-publish-button', '.js-publish-button exists');
         test.assertExists('.js-publish-button.btn-blue', '.js-publish-button.btn-blue exists');
@@ -445,7 +445,7 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:nth-child(2) a');
@@ -461,9 +461,9 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
     // Do unpublish
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success', function checkPostWasCreated() {
+    casper.waitForSelector('.gh-notification', function checkPostWasCreated() {
         // ... check status, label, class
-        casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+        casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
             test.assertExists('.js-publish-button.btn-blue', 'Publish button should have .btn-blue');
             test.assertSelectorHasText('.js-publish-button', 'Save Draft', '.js-publish-button says Save Draft');
         }, function onTimeout() {
@@ -472,7 +472,7 @@ CasperTest.begin('Publish menu - existing post', 23, function suite(test) {
     });
 });
 
-CasperTest.begin('Publish menu - delete post', 7, function testDeleteModal(test) {
+CasperTest.begin('Publish menu - delete post', 6, function testDeleteModal(test) {
     // Create a post that can be deleted
     CasperTest.Routines.createTestPost.run(false);
 
@@ -488,7 +488,7 @@ CasperTest.begin('Publish menu - delete post', 7, function testDeleteModal(test)
 
     // Open post settings menu
     casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
-    casper.waitForOpaque('.js-publish-splitbutton .open');
+    casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
     casper.thenClick('.js-publish-splitbutton li:nth-child(4) a');
 
     casper.waitUntilVisible('.modal-container', function onSuccess() {
@@ -506,7 +506,7 @@ CasperTest.begin('Publish menu - delete post', 7, function testDeleteModal(test)
 
     // Test delete
     casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
-    casper.waitForOpaque('.js-publish-splitbutton .open');
+    casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
     casper.thenClick('.js-publish-splitbutton li:nth-child(4) a');
 
     casper.waitForSelector('.modal-container .modal-content', function onSuccess() {
@@ -515,20 +515,13 @@ CasperTest.begin('Publish menu - delete post', 7, function testDeleteModal(test)
         // Delete the post
         this.click('.modal-content .js-button-accept');
 
-        casper.waitForSelector('.notification-success', function onSuccess() {
-            test.assert(true, 'Got success notification from delete post');
-            test.assertSelectorHasText(
-                '.gh-notification-content',
-                'Your post has been deleted.',
-                '.gh-notification-content has correct text'
-            );
-        }, function onTimeout() {
-            test.fail('No success notification from delete post');
+        casper.waitWhileVisible('.modal-container', function onSuccess() {
+            test.assert(true, 'clicking delete button should close the delete post modal');
         });
     });
 });
 
-CasperTest.begin('Publish menu - new post status is correct after failed save', 4, function suite(test) {
+CasperTest.begin('Publish menu - new post status is correct after failed save', 2, function suite(test) {
     casper.thenOpenAndWaitForPageLoad('editor', function testTitleAndUrl() {
         test.assertTitle('Editor - Test Blog', 'Ghost admin has incorrect title');
         test.assertUrlMatch(/ghost\/editor\/$/, 'Landed on the correct URL');
@@ -543,7 +536,7 @@ CasperTest.begin('Publish menu - new post status is correct after failed save', 
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:first-child a');
@@ -551,16 +544,6 @@ CasperTest.begin('Publish menu - new post status is correct after failed save', 
 
     // attempt to save
     casper.thenClick('.js-publish-button');
-
-    // ... check status, label, class
-    casper.waitForSelector('.notification-error', function onSuccess() {
-        test.assertExists('.js-publish-button.btn-blue', 'Update button should have .btn-blue');
-        // wait for button to settle
-        casper.wait(500);
-        test.assertSelectorHasText('.js-publish-button', 'Save Draft', '.js-publish-button says Save Draft');
-    }, function onTimeout() {
-        test.assert(false, 'Saving post with invalid title should trigger an error');
-    });
 
     // Click on "Content" in the main nav
     casper.thenClick('.gh-nav-main-content');
@@ -588,7 +571,7 @@ CasperTest.begin('Publish menu - existing post status is correct after failed sa
     // save
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success');
+    casper.waitForSelector('.gh-notification');
 
     casper.then(function updateTitle() {
         casper.sendKeys('#entry-title', new Array(160).join('y'));
@@ -598,13 +581,13 @@ CasperTest.begin('Publish menu - existing post status is correct after failed sa
         // Open the publish options menu;
         casper.thenClick('.js-publish-splitbutton .dropdown-toggle');
 
-        casper.waitForOpaque('.js-publish-splitbutton .open');
+        casper.waitForOpaque('.js-publish-splitbutton .dropdown-menu');
 
         // Select the publish post button
         casper.thenClick('.js-publish-splitbutton li:first-child a');
 
         // ... check status, label, class
-        casper.waitForSelector('.js-publish-splitbutton', function onSuccess() {
+        casper.waitForSelector('.js-publish-splitbutton .js-publish-button:not([disabled])', function onSuccess() {
             test.assertExists('.js-publish-button.btn-red', 'Publish button should have .btn-red');
             test.assertSelectorHasText('.js-publish-button', 'Publish Now', '.js-publish-button says Publish Now');
         }, function onTimeout() {
@@ -616,11 +599,13 @@ CasperTest.begin('Publish menu - existing post status is correct after failed sa
     casper.thenClick('.js-publish-button');
 
     // ... check status, label, class
-    casper.waitForSelector('.notification-error', function onSuccess() {
+    casper.waitForSelector('.gh-alert-red', function onSuccess() {
         test.assertExists('.js-publish-button.btn-blue', 'Update button should have .btn-blue');
         // wait for button to settle
-        casper.wait(500);
-        test.assertSelectorHasText('.js-publish-button', 'Save Draft', '.js-publish-button says Save Draft');
+        casper.wait(1100);
+        casper.then(function () {
+            test.assertSelectorHasText('.js-publish-button', 'Save Draft', '.js-publish-button says Save Draft');
+        });
     }, function onTimeout() {
         test.assert(false, 'Saving post with invalid title should trigger an error');
     });
@@ -668,7 +653,7 @@ CasperTest.begin('Title input is set correctly after using the Post-Settings-Men
     // save draft
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success');
+    casper.waitForSelector('.gh-notification');
 
     // change the title
     casper.then(function updateTitle() {
@@ -715,7 +700,7 @@ CasperTest.begin('Editor content is set correctly after using the Post-Settings-
     // save draft
     casper.thenClick('.js-publish-button');
 
-    casper.waitForSelector('.notification-success');
+    casper.waitForSelector('.gh-notification');
 
     // change the content
     casper.then(function updateContent() {

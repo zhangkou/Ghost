@@ -190,7 +190,9 @@ function urlFor(context, data, absolute) {
             urlPath = data.nav.url;
             baseUrl = getBaseUrl(secure);
             hostname = baseUrl.split('//')[1] + ghostConfig.paths.subdir;
-            if (urlPath.indexOf(hostname) > -1 && urlPath.indexOf('.' + hostname) === -1) {
+            if (urlPath.indexOf(hostname) > -1
+                && urlPath.indexOf('.' + hostname) === -1
+                && urlPath.indexOf('mailto:') !== 0) {
                 // make link relative to account for possible
                 // mismatch in http/https etc, force absolute
                 // do not do so if link is a subdomain of blog url
@@ -208,7 +210,8 @@ function urlFor(context, data, absolute) {
     }
 
     // This url already has a protocol so is likely an external url to be returned
-    if (urlPath && (urlPath.indexOf('://') !== -1 || urlPath.indexOf('mailto:') === 0)) {
+    // or it is an alternative scheme, protocol-less, or an anchor-only path
+    if (urlPath && (urlPath.indexOf('://') !== -1 || urlPath.match(/^(\/\/|#|[a-zA-Z0-9\-]+:)/))) {
         return urlPath;
     }
 

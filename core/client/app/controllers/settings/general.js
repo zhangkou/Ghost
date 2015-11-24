@@ -1,10 +1,24 @@
 import Ember from 'ember';
+import SettingsSaveMixin from 'ghost/mixins/settings-save';
 import randomPassword from 'ghost/utils/random-password';
 
-export default Ember.Controller.extend({
+export default Ember.Controller.extend(SettingsSaveMixin, {
     notifications: Ember.inject.service(),
+    config: Ember.inject.service(),
 
-    selectedTheme: null,
+    selectedTheme: Ember.computed('model.activeTheme', 'themes', function () {
+        var activeTheme = this.get('model.activeTheme'),
+            themes = this.get('themes'),
+            selectedTheme;
+
+        themes.forEach(function (theme) {
+            if (theme.name === activeTheme) {
+                selectedTheme = theme;
+            }
+        });
+
+        return selectedTheme;
+    }),
 
     logoImageSource: Ember.computed('model.logo', function () {
         return this.get('model.logo') || '';
@@ -44,22 +58,30 @@ export default Ember.Controller.extend({
     }).readOnly(),
 
     generatePassword: Ember.observer('model.isPrivate', function () {
-        if (this.get('model.isPrivate') && this.get('model.isDirty')) {
+        this.get('model.errors').remove('password');
+        if (this.get('model.isPrivate') && this.get('model.hasDirtyAttributes')) {
             this.get('model').set('password', randomPassword());
         }
     }),
 
+    save: function () {
+        var notifications = this.get('notifications'),
+            config = this.get('config');
+
+        return this.get('model').save().then(function (model) {
+            config.set('blogTitle', model.get('title'));
+
+            return model;
+        }).catch(function (error) {
+            if (error) {
+                notifications.showAPIError(error, {key: 'settings.save'});
+            }
+        });
+    },
+
     actions: {
-        save: function () {
-            var notifications = this.get('notifications');
-
-            return this.get('model').save().then(function (model) {
-                notifications.showSuccess('Settings successfully saved.');
-
-                return model;
-            }).catch(function (errors) {
-                notifications.showErrors(errors);
-            });
+        validate: function (property) {
+            this.get('model').validate({property: property});
         },
 
         checkPostsPerPage: function () {
@@ -68,6 +90,10 @@ export default Ember.Controller.extend({
             if (postsPerPage < 1 || postsPerPage > 1000 || isNaN(postsPerPage)) {
                 this.set('model.postsPerPage', 5);
             }
+        },
+
+        setTheme: function (theme) {
+            this.set('model.activeTheme', theme.name);
         }
     }
 });

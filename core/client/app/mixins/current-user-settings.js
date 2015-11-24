@@ -1,11 +1,12 @@
 import Ember from 'ember';
-var CurrentUserSettings = Ember.Mixin.create({
+
+export default Ember.Mixin.create({
     transitionAuthor: function () {
         var self = this;
 
         return function (user) {
             if (user.get('isAuthor')) {
-                return self.transitionTo('settings.users.user', user);
+                return self.transitionTo('team.user', user);
             }
 
             return user;
@@ -17,12 +18,10 @@ var CurrentUserSettings = Ember.Mixin.create({
 
         return function (user) {
             if (user.get('isEditor')) {
-                return self.transitionTo('settings.users');
+                return self.transitionTo('team');
             }
 
             return user;
         };
     }
 });
-
-export default CurrentUserSettings;

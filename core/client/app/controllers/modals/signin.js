@@ -3,9 +3,11 @@ import ValidationEngine from 'ghost/mixins/validation-engine';
 
 export default Ember.Controller.extend(ValidationEngine, {
     validationType: 'signin',
+    submitting: false,
 
     application: Ember.inject.controller(),
     notifications: Ember.inject.service(),
+    session: Ember.inject.service(),
 
     identification: Ember.computed('session.user.email', function () {
         return this.get('session.user.email');
@@ -14,21 +16,21 @@ export default Ember.Controller.extend(ValidationEngine, {
     actions: {
         authenticate: function () {
             var appController = this.get('application'),
-                authStrategy = 'simple-auth-authenticator:oauth2-password-grant',
-                data = this.getProperties('identification', 'password'),
+                authStrategy = 'authenticator:oauth2',
                 self = this;
 
             appController.set('skipAuthSuccessHandler', true);
 
-            this.get('session').authenticate(authStrategy, data).then(function () {
+            this.get('session').authenticate(authStrategy, this.get('identification'), this.get('password')).then(function () {
                 self.send('closeModal');
-                self.get('notifications').showSuccess('Login successful.');
                 self.set('password', '');
+                self.get('notifications').closeAlerts('post.save');
             }).catch(function () {
                 // if authentication fails a rejected promise will be returned.
                 // it needs to be caught so it doesn't generate an exception in the console,
                 // but it's actually "handled" by the sessionAuthenticationFailed action handler.
             }).finally(function () {
+                self.toggleProperty('submitting');
                 appController.set('skipAuthSuccessHandler', undefined);
             });
         },
@@ -36,12 +38,13 @@ export default Ember.Controller.extend(ValidationEngine, {
         validateAndAuthenticate: function () {
             var self = this;
 
+            this.toggleProperty('submitting');
+
             // Manually trigger events for input fields, ensuring legacy compatibility with
             // browsers and password managers that don't send proper events on autofill
             $('#login').find('input').trigger('change');
 
             this.validate({format: false}).then(function () {
-                self.get('notifications').closePassive();
                 self.send('authenticate');
             }).catch(function (errors) {
                 self.get('notifications').showErrors(errors);

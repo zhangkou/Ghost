@@ -1,12 +1,13 @@
 /* global key */
 
 import Ember from 'ember';
-import ApplicationRouteMixin from 'simple-auth/mixins/application-route-mixin';
-import Configuration from 'simple-auth/configuration';
+import AuthConfiguration from 'ember-simple-auth/configuration';
+import ApplicationRouteMixin from 'ember-simple-auth/mixins/application-route-mixin';
 import ShortcutsRoute from 'ghost/mixins/shortcuts-route';
 import ctrlOrCmd from 'ghost/utils/ctrl-or-cmd';
+import windowProxy from 'ghost/utils/window-proxy';
 
-var shortcuts = {};
+const shortcuts = {};
 
 shortcuts.esc = {action: 'closeMenus', scope: 'all'};
 shortcuts.enter = {action: 'confirmModal', scope: 'modal'};
@@ -20,7 +21,7 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
     notifications: Ember.inject.service(),
 
     afterModel: function (model, transition) {
-        if (this.get('session').isAuthenticated) {
+        if (this.get('session.isAuthenticated')) {
             transition.send('loadServerNotifications');
         }
     },
@@ -29,8 +30,26 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
         return tokens.join(' - ') + ' - ' + this.get('config.blogTitle');
     },
 
+    sessionAuthenticated: function () {
+        const appController = this.controllerFor('application'),
+            self = this;
+
+        if (appController && appController.get('skipAuthSuccessHandler')) {
+            return;
+        }
+
+        this._super(...arguments);
+        this.get('session.user').then(function (user) {
+            self.send('signedIn', user);
+        });
+    },
+
+    sessionInvalidated: function () {
+        this.send('authorizationFailed');
+    },
+
     actions: {
-        openMobileMenu () {
+        openMobileMenu: function () {
             this.controller.set('showMobileMenu', true);
         },
 
@@ -38,9 +57,8 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
             this.controller.set('showSettingsMenu', true);
         },
 
-        closeMenus () {
+        closeMenus: function () {
             this.get('dropdown').closeDropdowns();
-            this.get('notifications').closeAll();
             this.send('closeModal');
             this.controller.setProperties({
                 showSettingsMenu: false,
@@ -48,50 +66,23 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
             });
         },
 
+        didTransition: function () {
+            this.send('closeMenus');
+        },
+
         signedIn: function () {
+            this.get('notifications').clearAll();
             this.send('loadServerNotifications', true);
         },
 
         invalidateSession: function () {
-            this.get('session').invalidate();
-        },
-
-        sessionAuthenticationFailed: function (error) {
-            if (error.errors) {
-                // These are server side errors, which can be marked as htmlSafe
-                error.errors.forEach(function (err) {
-                    err.message = err.message.htmlSafe();
-                });
-
-                this.get('notifications').showErrors(error.errors);
-            } else {
-                // connection errors don't return proper status message, only req.body
-                this.get('notifications').showError('There was a problem on the server.');
-            }
-        },
-
-        sessionAuthenticationSucceeded: function () {
-            var appController = this.controllerFor('application'),
-                self = this;
-
-            if (appController && appController.get('skipAuthSuccessHandler')) {
-                return;
-            }
-
-            this.get('session.user').then(function (user) {
-                self.send('signedIn', user);
-                var attemptedTransition = self.get('session').get('attemptedTransition');
-                if (attemptedTransition) {
-                    attemptedTransition.retry();
-                    self.get('session').set('attemptedTransition', null);
-                } else {
-                    self.transitionTo(Configuration.routeAfterAuthentication);
-                }
+            this.get('session').invalidate().catch(function (error) {
+                this.get('notifications').showAlert(error.message, {type: 'error', key: 'session.invalidate.failed'});
             });
         },
 
-        sessionInvalidationFailed: function (error) {
-            this.get('notifications').showError(error.message);
+        authorizationFailed: function () {
+            windowProxy.replaceLocation(AuthConfiguration.baseURL);
         },
 
         openModal: function (modalName, model, type) {
@@ -118,7 +109,7 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
         },
 
         confirmModal: function () {
-            var modalName = this.get('modalName');
+            let modalName = this.get('modalName');
 
             this.send('closeModal');
 
@@ -137,12 +128,12 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
         },
 
         loadServerNotifications: function (isDelayed) {
-            var self = this;
+            let self = this;
 
-            if (this.session.isAuthenticated) {
+            if (this.get('session.isAuthenticated')) {
                 this.get('session.user').then(function (user) {
                     if (!user.get('isAuthor') && !user.get('isEditor')) {
-                        self.store.findAll('notification').then(function (serverNotifications) {
+                        self.store.findAll('notification', {reload: true}).then(function (serverNotifications) {
                             serverNotifications.forEach(function (notification) {
                                 self.get('notifications').handleNotification(notification, isDelayed);
                             });
@@ -150,19 +141,6 @@ export default Ember.Route.extend(ApplicationRouteMixin, ShortcutsRoute, {
                     }
                 });
             }
-        },
-
-        handleErrors: function (errors) {
-            var notifications = this.get('notifications');
-
-            notifications.clear();
-            errors.forEach(function (errorObj) {
-                notifications.showError(errorObj.message || errorObj);
-
-                if (errorObj.hasOwnProperty('el')) {
-                    errorObj.el.addClass('input-error');
-                }
-            });
         },
 
         // noop default for unhandled save (used from shortcuts)

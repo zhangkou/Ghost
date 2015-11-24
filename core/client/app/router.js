@@ -1,18 +1,16 @@
 import Ember from 'ember';
 import ghostPaths from 'ghost/utils/ghost-paths';
 import documentTitle from 'ghost/utils/document-title';
+import config from './config/environment';
 
 var Router = Ember.Router.extend({
-    location: 'trailing-history', // use HTML5 History API instead of hash-tag based URLs
+    location: config.locationType, // use HTML5 History API instead of hash-tag based URLs
     rootURL: ghostPaths().adminRoot, // admin interface lives under sub-directory /ghost
 
     notifications: Ember.inject.service(),
 
-    clearNotifications: Ember.on('didTransition', function () {
-        var notifications = this.get('notifications');
-
-        notifications.closePassive();
-        notifications.displayDelayed();
+    displayDelayedNotifications: Ember.on('didTransition', function () {
+        this.get('notifications').displayDelayed();
     })
 });
 
@@ -40,17 +38,18 @@ Router.map(function () {
         this.route('edit', {path: ':post_id'});
     });
 
-    this.route('settings.general', {path: '/settings/general'});
-    this.route('settings.users', {path: '/settings/users'}, function () {
-        this.route('user', {path: ':slug'});
+    this.route('team', {path: '/team'}, function () {
+        this.route('user', {path: ':user_slug'});
     });
-    this.route('settings.tags', {path: '/settings/tags'});
+
+    this.route('settings.general', {path: '/settings/general'});
+    this.route('settings.tags', {path: '/settings/tags'}, function () {
+        this.route('tag', {path: ':tag_slug'});
+        this.route('new');
+    });
     this.route('settings.labs', {path: '/settings/labs'});
     this.route('settings.code-injection', {path: '/settings/code-injection'});
     this.route('settings.navigation', {path: '/settings/navigation'});
-
-    // Redirect legacy content to posts
-    this.route('content');
 
     this.route('error404', {path: '/*path'});
 });

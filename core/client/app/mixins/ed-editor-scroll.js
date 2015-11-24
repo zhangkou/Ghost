@@ -1,8 +1,7 @@
 import Ember from 'ember';
-
 import setScrollClassName from 'ghost/utils/set-scroll-classname';
 
-var EditorScroll = Ember.Mixin.create({
+export default Ember.Mixin.create({
     /**
      * Determine if the cursor is at the end of the textarea
      */
@@ -62,7 +61,7 @@ var EditorScroll = Ember.Mixin.create({
      */
     scrollHandler: function () {
         this.set('scrollThrottle', Ember.run.throttle(this, function () {
-            this.set('scrollInfo', this.getScrollInfo());
+            this.sendAction('updateScrollInfo', this.getScrollInfo());
         }, 10));
     },
 
@@ -79,16 +78,26 @@ var EditorScroll = Ember.Mixin.create({
             target: Ember.$('.js-entry-markdown'),
             offset: 10
         }));
-    }.on('didInsertElement'),
+    },
 
     /**
-     * once the element is in the DOM unbind from the events which control scroll behaviour
+     * once the element has been removed from the DOM unbind from the events which control scroll behaviour
      */
     detachScrollHandlers: function () {
         this.$().off('keypress');
         this.$().off('scroll');
         Ember.run.cancel(this.get('scrollThrottle'));
-    }.on('willDestroyElement')
-});
+    },
 
-export default EditorScroll;
+    didInsertElement: function () {
+        this._super();
+
+        this.attachScrollHandlers();
+    },
+
+    willDestroyElement: function () {
+        this._super();
+
+        this.detachScrollHandlers();
+    }
+});

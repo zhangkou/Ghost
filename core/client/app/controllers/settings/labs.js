@@ -1,12 +1,15 @@
 import Ember from 'ember';
 import {request as ajax} from 'ic-ajax';
 
-export default Ember.Controller.extend(Ember.Evented, {
+export default Ember.Controller.extend({
     uploadButtonText: 'Import',
     importErrors: '',
+    submitting: false,
 
     ghostPaths: Ember.inject.service('ghost-paths'),
     notifications: Ember.inject.service(),
+    session: Ember.inject.service(),
+    feature: Ember.inject.controller(),
 
     labsJSON: Ember.computed('model.labs', function () {
         return JSON.parse(this.get('model.labs') || {});
@@ -23,19 +26,29 @@ export default Ember.Controller.extend(Ember.Evented, {
 
         this.get('model').save().catch(function (errors) {
             self.showErrors(errors);
-            self.get('model').rollback();
+            self.get('model').rollbackAttributes();
         });
     },
+
+    usePublicAPI: Ember.computed('feature.publicAPI', {
+        get: function () {
+            return this.get('feature.publicAPI');
+        },
+        set: function (key, value) {
+            this.saveLabs('publicAPI', value);
+            return value;
+        }
+    }),
 
     actions: {
         onUpload: function (file) {
             var self = this,
                 formData = new FormData(),
-                notifications = this.get('notifications');
+                notifications = this.get('notifications'),
+                currentUserId = this.get('session.user.id');
 
             this.set('uploadButtonText', 'Importing');
             this.set('importErrors', '');
-            notifications.closePassive();
 
             formData.append('importfile', file);
 
@@ -48,29 +61,27 @@ export default Ember.Controller.extend(Ember.Evented, {
                 processData: false
             }).then(function () {
                 // Clear the store, so that all the new data gets fetched correctly.
-                self.store.unloadAll('post');
-                self.store.unloadAll('tag');
-                self.store.unloadAll('user');
-                self.store.unloadAll('role');
-                self.store.unloadAll('setting');
-                self.store.unloadAll('notification');
-                notifications.showSuccess('Import successful.');
+                self.store.unloadAll();
+                // Reload currentUser and set session
+                self.set('session.user', self.store.findRecord('user', currentUserId));
+                // TODO: keep as notification, add link to view content
+                notifications.showNotification('Import successful.');
+                notifications.closeAlerts('import.upload');
             }).catch(function (response) {
                 if (response && response.jqXHR && response.jqXHR.responseJSON && response.jqXHR.responseJSON.errors) {
                     self.set('importErrors', response.jqXHR.responseJSON.errors);
                 }
 
-                notifications.showError('Import Failed');
+                notifications.showAlert('Import Failed', {type: 'error', key: 'import.upload.failed'});
             }).finally(function () {
                 self.set('uploadButtonText', 'Import');
-                self.trigger('reset');
             });
         },
 
         exportData: function () {
             var iframe = $('#iframeDownload'),
                 downloadURL = this.get('ghostPaths.url').api('db') +
-                    '?access_token=' + this.get('session.secure.access_token');
+                    '?access_token=' + this.get('session.data.authenticated.access_token');
 
             if (iframe.length === 0) {
                 iframe = $('<iframe>', {id: 'iframeDownload'}).hide().appendTo('body');
@@ -80,18 +91,23 @@ export default Ember.Controller.extend(Ember.Evented, {
         },
 
         sendTestEmail: function () {
-            var notifications = this.get('notifications');
+            var notifications = this.get('notifications'),
+                self = this;
+
+            this.toggleProperty('submitting');
 
             ajax(this.get('ghostPaths.url').api('mail', 'test'), {
                 type: 'POST'
             }).then(function () {
-                notifications.showSuccess('Check your email for the test message.');
+                notifications.showAlert('Check your email for the test message.', {type: 'info', key: 'test-email.send.success'});
+                self.toggleProperty('submitting');
             }).catch(function (error) {
                 if (typeof error.jqXHR !== 'undefined') {
-                    notifications.showAPIError(error);
+                    notifications.showAPIError(error, {key: 'test-email.send'});
                 } else {
-                    notifications.showErrors(error);
+                    notifications.showErrors(error, {key: 'test-email.send'});
                 }
+                self.toggleProperty('submitting');
             });
         }
     }

@@ -1,4 +1,3 @@
-/* global md5 */
 import Ember from 'ember';
 import {request as ajax} from 'ic-ajax';
 import ValidationEngine from 'ghost/mixins/validation-engine';
@@ -10,43 +9,69 @@ export default Ember.Controller.extend(ValidationEngine, {
     email: '',
     password: null,
     image: null,
+    blogCreated: false,
     submitting: false,
+    flowErrors: '',
 
     ghostPaths: Ember.inject.service('ghost-paths'),
     notifications: Ember.inject.service(),
     application: Ember.inject.controller(),
-
-    gravatarUrl: Ember.computed('email', function () {
-        var email = this.get('email'),
-            size = this.get('size');
-
-        return 'http://www.gravatar.com/avatar/' + md5(email) + '?s=' + size + '&d=blank';
-    }),
-
-    userImage: Ember.computed('gravatarUrl', function () {
-        return this.get('image') || this.get('gravatarUrl');
-    }),
-
-    userImageBackground: Ember.computed('userImage', function () {
-        return 'background-image: url(' + this.get('userImage') + ')';
-    }),
+    config: Ember.inject.service(),
+    session: Ember.inject.service(),
 
     // ValidationEngine settings
     validationType: 'setup',
 
+    /**
+     * Uploads the given data image, then sends the changed user image property to the server
+     * @param  {Object} user User object, returned from the 'setup' api call
+     * @return {Ember.RSVP.Promise} A promise that takes care of both calls
+     */
+    sendImage: function (user) {
+        var self = this,
+            image = this.get('image');
+
+        return new Ember.RSVP.Promise(function (resolve, reject) {
+            image.formData = {};
+            image.submit()
+                .success(function (response) {
+                    user.image = response;
+                    ajax({
+                        url: self.get('ghostPaths.url').api('users', user.id.toString()),
+                        type: 'PUT',
+                        data: {
+                            users: [user]
+                        }
+                    }).then(resolve).catch(reject);
+                })
+                .error(reject);
+        });
+    },
+
     actions: {
+        preValidate: function (model) {
+            // Only triggers validation if a value has been entered, preventing empty errors on focusOut
+            if (this.get(model)) {
+                this.validate({property: model});
+            }
+        },
+
         setup: function () {
             var self = this,
+                setupProperties = ['blogTitle', 'name', 'email', 'password', 'image'],
+                data = self.getProperties(setupProperties),
                 notifications = this.get('notifications'),
-                data = self.getProperties('blogTitle', 'name', 'email', 'password');
-
-            notifications.closePassive();
+                config = this.get('config'),
+                method = this.get('blogCreated') ? 'PUT' : 'POST';
 
             this.toggleProperty('submitting');
-            this.validate({format: false}).then(function () {
+            this.set('flowErrors', '');
+
+            this.get('hasValidated').addObjects(setupProperties);
+            this.validate().then(function () {
                 ajax({
                     url: self.get('ghostPaths.url').api('authentication', 'setup'),
-                    type: 'POST',
+                    type: method,
                     data: {
                         setup: [{
                             name: data.name,
@@ -55,25 +80,41 @@ export default Ember.Controller.extend(ValidationEngine, {
                             blogTitle: data.blogTitle
                         }]
                     }
-                }).then(function () {
+                }).then(function (result) {
+                    config.set('blogTitle', data.blogTitle);
                     // Don't call the success handler, otherwise we will be redirected to admin
                     self.get('application').set('skipAuthSuccessHandler', true);
-
-                    self.get('session').authenticate('simple-auth-authenticator:oauth2-password-grant', {
-                        identification: self.get('email'),
-                        password: self.get('password')
-                    }).then(function () {
-                        self.set('password', '');
-                        self.transitionToRoute('setup.three');
+                    self.get('session').authenticate('authenticator:oauth2', self.get('email'), self.get('password')).then(function () {
+                        self.set('blogCreated', true);
+                        if (data.image) {
+                            self.sendImage(result.users[0])
+                            .then(function () {
+                                self.toggleProperty('submitting');
+                                self.transitionToRoute('setup.three');
+                            }).catch(function (resp) {
+                                self.toggleProperty('submitting');
+                                notifications.showAPIError(resp, {key: 'setup.blog-details'});
+                            });
+                        } else {
+                            self.toggleProperty('submitting');
+                            self.transitionToRoute('setup.three');
+                        }
                     });
                 }).catch(function (resp) {
                     self.toggleProperty('submitting');
-                    notifications.showAPIError(resp);
+                    if (resp && resp.jqXHR && resp.jqXHR.responseJSON && resp.jqXHR.responseJSON.errors) {
+                        self.set('flowErrors', resp.jqXHR.responseJSON.errors[0].message);
+                    } else {
+                        notifications.showAPIError(resp, {key: 'setup.blog-details'});
+                    }
                 });
-            }).catch(function (errors) {
+            }).catch(function () {
                 self.toggleProperty('submitting');
-                notifications.showErrors(errors);
+                self.set('flowErrors', 'Please fill out the form to setup your blog.');
             });
+        },
+        setImage: function (image) {
+            this.set('image', image);
         }
     }
 });

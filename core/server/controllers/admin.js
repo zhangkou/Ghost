@@ -13,8 +13,16 @@ adminControllers = {
         /*jslint unparam:true*/
 
         function renderIndex() {
+            var configuration;
             return api.configuration.browse().then(function then(data) {
-                var apiConfig = _.omit(data.configuration, function omit(value) {
+                configuration = data.configuration;
+            }).then(function getAPIClient() {
+                return api.clients.read({slug: 'ghost-admin'});
+            }).then(function renderIndex(adminClient) {
+                configuration.push({key: 'clientId', value: adminClient.clients[0].slug});
+                configuration.push({key: 'clientSecret', value: adminClient.clients[0].secret});
+
+                var apiConfig = _.omit(configuration, function omit(value) {
                     return _.contains(['environment', 'database', 'mail', 'version'], value.key);
                 });
 
@@ -36,7 +44,7 @@ adminControllers = {
                 type: 'upgrade',
                 location: 'settings-about-upgrade',
                 dismissible: false,
-                status: 'persistent',
+                status: 'alert',
                 message: 'Ghost ' + updateVersion + ' is available! Hot Damn. <a href="http://support.ghost.org/how-to-upgrade/" target="_blank">Click here</a> to upgrade.'
             };
 

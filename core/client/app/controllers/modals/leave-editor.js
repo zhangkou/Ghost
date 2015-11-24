@@ -19,7 +19,7 @@ export default Ember.Controller.extend({
             }
 
             if (!transition || !editorController) {
-                this.get('notifications').showError('Sorry, there was an error in the application. Please let the Ghost team know what happened.');
+                this.get('notifications').showNotification('Sorry, there was an error in the application. Please let the Ghost team know what happened.', {type: 'error'});
 
                 return true;
             }
@@ -32,11 +32,11 @@ export default Ember.Controller.extend({
                 model.deleteRecord();
             } else {
                 // roll back changes on model props
-                model.rollback();
+                model.rollbackAttributes();
             }
 
-            // setting isDirty to false here allows willTransition on the editor route to succeed
-            editorController.set('isDirty', false);
+            // setting hasDirtyAttributes to false here allows willTransition on the editor route to succeed
+            editorController.set('hasDirtyAttributes', false);
 
             // since the transition is now certain to complete, we can unset window.onbeforeunload here
             window.onbeforeunload = null;

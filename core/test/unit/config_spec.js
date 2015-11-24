@@ -379,9 +379,22 @@ describe('Config', function () {
                 testData = {nav: {url: 'http://sub.my-ghost-blog.com/'}};
                 config.urlFor(testContext, testData).should.equal('http://sub.my-ghost-blog.com/');
 
+                testData = {nav: {url: '//sub.my-ghost-blog.com/'}};
+                config.urlFor(testContext, testData).should.equal('//sub.my-ghost-blog.com/');
+
+                testData = {nav: {url: 'mailto:sub@my-ghost-blog.com/'}};
+                config.urlFor(testContext, testData).should.equal('mailto:sub@my-ghost-blog.com/');
+
+                testData = {nav: {url: '#this-anchor'}};
+                config.urlFor(testContext, testData).should.equal('#this-anchor');
+
                 config.set({url: 'http://my-ghost-blog.com/blog'});
                 testData = {nav: {url: 'http://my-ghost-blog.com/blog/short-and-sweet/'}};
                 config.urlFor(testContext, testData).should.equal('http://my-ghost-blog.com/blog/short-and-sweet/');
+
+                config.set({url: 'http://my-ghost-blog.com/'});
+                testData = {nav: {url: 'mailto:marshmallow@my-ghost-blog.com'}};
+                config.urlFor(testContext, testData).should.equal('mailto:marshmallow@my-ghost-blog.com');
             });
 
             it('should return other known paths when requested', function () {
@@ -828,7 +841,7 @@ describe('Config', function () {
 
         it('displays warning when updateCheck exists and is falsy', function () {
             config.set({
-                updateCheck: undefined
+                updateCheck: false
             });
             // Run the test code
             config.checkDeprecated();
@@ -861,13 +874,14 @@ describe('Config', function () {
         it('displays warning when mail.fromaddress exists and is falsy', function () {
             config.set({
                 mail: {
-                    fromaddress: undefined
+                    fromaddress: false
                 }
             });
             // Run the test code
             config.checkDeprecated();
 
             logStub.calledOnce.should.be.true;
+
             logStub.calledWithMatch('mail.fromaddress').should.be.true;
 
             // Future tests: This is important here!

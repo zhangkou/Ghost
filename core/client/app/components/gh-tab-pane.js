@@ -1,6 +1,7 @@
 import Ember from 'ember';
+
 // See gh-tabs-manager.js for use
-var TabPane = Ember.Component.extend({
+export default Ember.Component.extend({
     classNameBindings: ['active'],
 
     tabsManager: Ember.computed(function () {
@@ -16,14 +17,13 @@ var TabPane = Ember.Component.extend({
 
     active: Ember.computed.alias('tab.active'),
 
-    // Register with the tabs manager
-    registerWithTabs: function () {
+    willRender: function () {
+        // Register with the tabs manager
         this.get('tabsManager').registerTabPane(this);
-    }.on('didInsertElement'),
+    },
 
-    unregisterWithTabs: function () {
+    willDestroyElement: function () {
+        // Deregister with the tabs manager
         this.get('tabsManager').unregisterTabPane(this);
-    }.on('willDestroyElement')
+    }
 });
-
-export default TabPane;

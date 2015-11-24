@@ -3,9 +3,7 @@ import EditorAPI from 'ghost/mixins/ed-editor-api';
 import EditorShortcuts from 'ghost/mixins/ed-editor-shortcuts';
 import EditorScroll from 'ghost/mixins/ed-editor-scroll';
 
-var Editor;
-
-Editor = Ember.TextArea.extend(EditorAPI, EditorShortcuts, EditorScroll, {
+export default Ember.TextArea.extend(EditorAPI, EditorShortcuts, EditorScroll, {
     focus: false,
 
     /**
@@ -16,18 +14,22 @@ Editor = Ember.TextArea.extend(EditorAPI, EditorShortcuts, EditorScroll, {
     },
 
     /**
-     * Check if the textarea should have focus, and set it if necessary
+     * Sets the focus of the textarea if needed
      */
     setFocus: function () {
         if (this.get('focus')) {
             this.$().val(this.$().val()).focus();
         }
-    }.on('didInsertElement'),
+    },
 
     /**
-     * Tell the controller about this component
+     * Sets up properties at render time
      */
     didInsertElement: function () {
+        this._super();
+
+        this.setFocus();
+
         this.sendAction('setEditor', this);
 
         Ember.run.scheduleOnce('afterRender', this, this.afterRenderEvent);
@@ -55,5 +57,3 @@ Editor = Ember.TextArea.extend(EditorAPI, EditorShortcuts, EditorScroll, {
         textarea.removeAttribute('readonly');
     }
 });
-
-export default Editor;

@@ -2,7 +2,7 @@ import Ember from 'ember';
 import DropdownMixin from 'ghost/mixins/dropdown-mixin';
 
 export default Ember.Component.extend(DropdownMixin, {
-    classNames: 'ghost-dropdown',
+    classNames: 'dropdown',
     classNameBindings: ['fadeIn:fade-in-scale:fade-out', 'isOpen:open:closed'],
 
     name: null,
@@ -37,10 +37,12 @@ export default Ember.Component.extend(DropdownMixin, {
         }
         this.$().on('animationend webkitAnimationEnd oanimationend MSAnimationEnd', function (event) {
             if (event.originalEvent.animationName === 'fade-out') {
-                if (self.get('closing')) {
-                    self.set('isOpen', false);
-                    self.set('closing', false);
-                }
+                Ember.run(self, function () {
+                    if (this.get('closing')) {
+                        this.set('isOpen', false);
+                        this.set('closing', false);
+                    }
+                });
             }
         });
     },

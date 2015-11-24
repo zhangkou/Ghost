@@ -6,6 +6,7 @@ export default Ember.Component.extend({
     classNameBindings: ['open'],
 
     config: Ember.inject.service(),
+    session: Ember.inject.service(),
 
     open: false,
 
@@ -14,12 +15,20 @@ export default Ember.Component.extend({
     },
 
     actions: {
-        toggleMaximise: function () {
+        toggleAutoNav: function () {
             this.sendAction('toggleMaximise');
         },
 
         openModal: function (modal) {
             this.sendAction('openModal', modal);
+        },
+
+        closeMobileMenu: function () {
+            this.sendAction('closeMobileMenu');
+        },
+
+        openAutoNav: function () {
+            this.sendAction('openAutoNav');
         }
     }
 });

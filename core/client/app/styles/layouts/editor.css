@@ -25,6 +25,12 @@
     outline: 0;
 }
 
+.editor-options .dropdown-menu {
+    top: 35px;
+    right: 0;
+    left: auto;
+}
+
 
 /* Container & Headers
 /* ---------------------------------------------------------- */
@@ -34,7 +40,7 @@
 }
 
 .editor .entry-preview {
-    border-left: #e1e1e1 1px solid;
+    border-left: #dfe1e3 1px solid;
 }
 
 .editor .entry-markdown,
@@ -61,21 +67,51 @@
     align-items: center;
     padding: 5px 15px;
     height: 40px;
-    border-top: #e1e1e1 1px solid;
+    border-top: #dfe1e3 1px solid;
     color: var(--midgrey);
     font-size: 1.2rem;
     line-height: 1em;
 }
 .editor .floatingheader a {
+    padding: 5px 15px;
     color: var(--midgrey);
+}
+.editor .floatingheader a.active {
+    font-weight: bold;
+}
+.editor .floatingheader a:first-of-type {
+    padding-left: 0;
+}
+.editor .floatingheader a:last-of-type {
+    padding-right: 0;
+}
+.editor .floatingheader span a:not(:first-of-type) {
+    border-left: 1px solid #dfe1e3;
+}
+.editor .floatingheader .mobile-tabs {
+    display: none;
 }
 
 /* Switch to 1 col editor on small screens */
 @media (max-width: 1000px) {
-    .editor .entry-markdown {
-        width: 100%;
-    }
+    .editor .entry-markdown,
     .editor .entry-preview {
+        width: 100%;
+        border-left: none;
+    }
+    /* We can't use display:none here as we want to keep widths/heights
+     * so that scrolling is kept in sync */
+    .editor .entry-markdown:not(.active),
+    .editor .entry-preview:not(.active) {
+        visibility: hidden;
+        position: absolute;
+        z-index: -1;
+        height: 100%;
+    }
+    .editor .floatingheader .mobile-tabs {
+        display: inline;
+    }
+    .editor .floatingheader .desktop-tabs {
         display: none;
     }
 }
@@ -156,7 +192,7 @@
 
 .entry-preview-content *,
 .content-preview-content * {
-    user-select: all;
+    user-select: text;
 }
 
 .entry-preview-content a,
@@ -172,7 +208,7 @@
 
 .entry-preview-content .btn,
 .content-preview-content .btn {
-    color: var(--grey);
+    color: #dfe1e3;
     text-decoration: none;
 }
 
@@ -180,7 +216,7 @@
 .content-preview-content .img-placeholder {
     position: relative;
     height: 100px;
-    border: 5px dashed var(--grey);
+    border: 5px dashed #dfe1e3;
 }
 
 .entry-preview-content .img-placeholder span,
@@ -219,197 +255,44 @@
     font-weight: bold;
 }
 
-
-/* Publish Bar
-/* ---------------------------------------------------------- */
-
-.extended-tags {
-    /* When the tag bar is expanded */
-    position: static;
-    min-height: 100%;
+/* Tags input CSS (TODO: needs some revision)
+/* ------------------------------------------------------ */
+.tags-input-list {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
 }
 
-.extended-tags #entry-tags:after {
-    right: 10px;
+.tags-input-list li {
+    flex: 1 0 auto;
 }
 
-.extended-tags .tags {
-    width: 281px;
-}
-
-.extended-tags .tag-input {
-    margin-top: 5px;
-    padding-top: 5px;
-    padding-left: 10px;
-    width: 100%;
-    border-top: 1px solid var(--darkgrey);
-}
-
-.extended-tags .right {
-    display: none;
-}
-
-#entry-tags input[type="text"].tag-input {
-    display: inline-block;
-    padding: 9px 9px 9px 0;
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--midgrey);
-    vertical-align: top;
-    line-height: 1;
+.label-tag {
+    margin-right: 0.3em;
+    padding: 0.2em 0.6em 0.3em;
+    background-color: var(--darkgrey);
+    border-radius: 0.25em;
+    color: var(--lightgrey);
+    text-align: center;
     font-weight: 300;
 }
 
-#entry-tags input[type="text"].tag-input:focus {
-    outline: none;
-}
-
-#entry-tags .tag {
-    display: inline;
-    margin-right: 3px;
-    padding: 2px 5px;
-    background: var(--darkgrey);
-    border-radius: 3px;
-    color: var(--lightgrey);
-    white-space: nowrap;
-    font-size: 1.2rem;
-    line-height: 1.2em;
-}
-
-#entry-tags .tag:hover {
-    cursor: pointer;
-}
-
-#entry-tags .tag i {
-    font-size: 0.7rem;
-}
-
-.suggestions {
-    top: auto;
-    bottom: calc(100% + 15px);
-}
-
-.suggestions li.selected,
-.suggestions li.selected a {
-    background: var(--blue);
-    color: #fff;
-    text-decoration: none;
-}
-
-.suggestions li.selected mark {
+.label-tag.highlight {
+    background: var(--midgrey);
     color: #fff;
 }
 
-.suggestions mark {
-    background: none;
-    color: #000;
-    font-weight: bold;
+.tag-input {
+    margin-top: 5px;
+    border: none;
+    font-weight: 300;
+    cursor: default;
 }
 
-#entry-actions {
-    position: relative;
-    flex-shrink: 0;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    align-content: center;
-}
-
-#entry-actions .dropdown {
-    position: absolute;
-    top: 35px;
-    right: 0;
-}
-
-#entry-actions .dropdown .dropdown-menu {
-    right: 100%;
-    left: auto;
-}
-
-#entry-actions.unsaved {
-    padding-bottom: 0;
-}
-
-#entry-actions.unsaved .delete {
-    display: none;
-}
-
-#entry-actions-menu {
-    position: absolute;
-    right: -5px;
-    bottom: 50px;
-}
-
-.tags-wrapper {
-    white-space: nowrap;
-}
-
-.tags-wrapper span {
-    display: inline-block;
-    margin-right: 10px;
-}
-
-.tag-label {
-    position: relative;
-    display: block;
-    width: 40px;
-    height: 40px;
-}
-
-.tag-label:before {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    color: var(--midgrey);
-    font-size: 1.3rem;
-    transition: color 0.15s linear;
-    transform: translateX(-50%) translateY(-50%);
-}
-
-.tag-label:hover {
-    cursor: pointer;
-}
-
-.publish-bar-inner {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    justify-content: center;
-    align-items: center;
-    align-content: space-between;
-    width: 100%;
-    height: 100%;
-}
-
-.publish-bar-tags-icon {
-    flex: 0 1 auto;
-    align-self: auto;
-    min-width: 40px;
-    max-width: 40px;
-}
-
-.publish-bar-tags {
-    flex: 0 1 auto;
-    align-self: auto;
-    overflow-y: hidden;
-    margin-right: 10px;
-    height: 40px;
-}
-
-.publish-bar-tags .tags-wrapper {
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-top: 8px;
-    padding-bottom: 9px;
-    height: 70px;
-    white-space: nowrap;
-}
-
-.publish-bar-tags-input {
-    position: relative;
-    flex: 1 1 auto;
-    align-self: auto;
+.tag-input:focus {
+    outline: 0;
 }
 
 .publish-bar-actions {
@@ -422,7 +305,7 @@
 .post-settings {
     position: relative;
     display: inline-block;
-    padding: 5px 10px;
+    padding: 15px;
     color: var(--midgrey);
     transition: all 0.15s ease-out 0s;
 }
